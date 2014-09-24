@@ -227,27 +227,41 @@ module mkFftSuperFolded(SuperFoldedFft#(radix)) provisos(Div#(TDiv#(FftPoints, 4
     Fifo#(2,Vector#(FftPoints, ComplexData)) inFifo <- mkCFFifo;
     Fifo#(2,Vector#(FftPoints, ComplexData)) outFifo <- mkCFFifo;
     Vector#(radix, Bfly4) bfly <- replicateM(mkBfly4);
+    Reg#(Vector#(FftPoints, ComplexData)) cycle_data <- mkRegU;
+    //Reg#(Bit#(TAdd#(TLog#(TDiv#(48, radix)), 1))) cycle <- mkReg(0);
+    Reg#(Bit#(6)) cycle <- mkReg(0);
+    let r = fromInteger(valueOf(radix));
 
-    /*function Vector#(FftPoints, ComplexData) f(Bit#(6) stagei, Vector#(FftPoints, ComplexData) stage_in);
-        let i = stagei `mod` 16;
-        let twid = getTwiddle(stagei `div` 16, i);
-        let y = bfly.bfly4(twid, stage_in[i:i+3]);
+    function Vector#(FftPoints, ComplexData) f(Bit#(6) cycle, Vector#(FftPoints, ComplexData) stage_in);
+        let stage = cycle / (16 / r);
+        let fold  = cycle % (16 / r);
 
-        let stage_temp = stage_in;
-        stage_temp[i] = y[0];
-        stage_temp[i+1] = y[1];
-        stage_temp[i+2] = y[2];
-        stage_temp[i+3] = y[3];
- 
-        let stage_out = stage_temp;
-        if (i == 15)
-            for (Integer i = 0; i < 64; i = i + 1)
-                stage_out[i] = stage_temp[permute[i]];
-        return stage_out;
-    endfunction*/
+        Vector#(FftPoints, ComplexData) stage_temp = stage_in;
+        for (Bit#(6) i = 0; i < r; i = i + 1)  begin
+            let idx = (fold * r + i) * 4;
+            Vector#(4, ComplexData) x;
+            Vector#(4, ComplexData) twid;
+            for (Bit#(6) j = 0; j < 4; j = j + 1 ) begin
+                x[j] = stage_in[idx + j];
+                twid[j] = getTwiddle(stage[2:0], idx + j);
+            end
+            let y = bfly[i].bfly4(twid, x);
+            for (Bit#(6) j = 0; j < 4; j = j + 1 ) begin
+                stage_temp[idx + j] = y[j];
+            end
+        end
+
+        if (fold == 16 / r - 1) return permute(stage_temp);
+        else return stage_temp;
+    endfunction
 
     rule doFft;
-        //TODO: Implement the rest of this module
+        let sxIn = ?;
+        if (cycle == 0) begin inFifo.deq; sxIn = inFifo.first; end
+        else sxIn = cycle_data;
+        let sxOut = f(cycle, sxIn);
+        if(cycle == 48 / r - 1) begin outFifo.enq(sxOut); cycle <= 0; end
+        else begin cycle_data <= sxOut; cycle <= cycle + 1; end
     endrule
 
     method Action enq(Vector#(FftPoints, ComplexData) in);
