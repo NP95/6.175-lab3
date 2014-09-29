@@ -3,16 +3,19 @@ compile:
 	bsc -u -sim -bdir buildDir -info-dir buildDir -simdir buildDir -vdir buildDir -aggressive-conditions TestBench.bsv
 
 fold: compile
-	bsc -sim -e mkTbFftFolded -bdir buildDir -info-dir buildDir -simdir buildDir -o simFold
+	bsc -sim -e mkTbFftFoldedFunc -bdir buildDir -info-dir buildDir -simdir buildDir -o simFoldedFunc
+	bsc -sim -e mkTbFftFoldedImpl -bdir buildDir -info-dir buildDir -simdir buildDir -o simFoldedImpl
 	
 inelastic: compile
-	bsc -sim -e mkTbFftInelasticPipeline -bdir buildDir -info-dir buildDir -simdir buildDir -o simInelastic
+	bsc -sim -e mkTbFftInelasticPipelineFunc -bdir buildDir -info-dir buildDir -simdir buildDir -o simInelasticFunc
+	bsc -sim -e mkTbFftInelasticPipelineImpl -bdir buildDir -info-dir buildDir -simdir buildDir -o simInelasticImpl
 
 elastic: compile
-	bsc -sim -e mkTbFftElasticPipeline -bdir buildDir -info-dir buildDir -simdir buildDir -o simElastic
+	bsc -sim -e mkTbFftElasticPipelineFunc -bdir buildDir -info-dir buildDir -simdir buildDir -o simElasticFunc
+	bsc -sim -e mkTbFftElasticPipelineImpl -bdir buildDir -info-dir buildDir -simdir buildDir -o simElasticImpl
 
 sfol: compile
-	bsc -sim -e mkTbFftSuperFolded -bdir buildDir -info-dir buildDir -simdir buildDir -o simSfol
+	bsc -sim -e mkTbFftSuperFoldedFunc -bdir buildDir -info-dir buildDir -simdir buildDir -o simSfolFunc
 
 all: fold inelastic elastic sfol
 
